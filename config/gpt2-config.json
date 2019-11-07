@@ -6,5 +6,5 @@
     "n_head": 3,
     "n_layer": 3,
     "n_positions": 24,
-    "vocab_size": 50257
+    "vocab_size": 10
 }

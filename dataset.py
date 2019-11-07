@@ -1,13 +1,18 @@
 import torch
+import torch.utils.data
+import numpy as np
+import pickle
 
-def load_data(filename, size=None, skip=0):
-    u = np.loadtxt(filename, dtype=int, delimiter=',',skiprows=skip, max_rows=size)
-    v = torch.from_numpy(u).to(torch.int64)
-    return v
+def get_dataset(pkl_path):
+    with open(pkl_path, 'rb') as file:
+        data_dict = pickle.load(file)
+    X = torch.utils.data.dataloader.DataLoader(Dataset(data_dict['x']))
+    T = torch.utils.data.dataloader.DataLoader(Dataset(data_dict['t']))
+    return X, T
 
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, csv_file, size=None, skip=0):
-        self.content = load_data(csv_file, size, skip)
+class Dataset(torch.utils.data.dataset.Dataset):
+    def __init__(self, content):
+        self.content = content
 
     def __len__(self):
         return len(self.content)
@@ -15,3 +20,11 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return self.content[idx]
 
+
+if __name__ == "__main__":
+    X, _ = get_dataset('train.pkl')
+    for idx, ctt in enumerate(X):
+        if idx > 5:
+            break
+        print(ctt)
+    
