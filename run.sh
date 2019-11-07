@@ -1,13 +1,12 @@
-nohup python train.py \
+python train.py \
     --model_type gpt2 \
-    --config_path ./config/gpt2_config.json \
-    --model_path \
+    --config_path ./config/gpt2-config.json \
     --no_cuda \
     --training_steps 3000 \
     --warmup_steps 200 \
     --batch_size 100 \
-    --train_data_path /train.pkl \
-    --eval_data_path /eval.pkl \
+    --train_data_path train.pkl \
+    --eval_data_path eval.pkl \
     --no_checkpoint \
     --log_interval 200 \
-    --debugging &
+    --debugging

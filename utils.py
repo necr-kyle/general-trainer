@@ -11,8 +11,8 @@ def inst_to_gpt2_inst(csv_file, size=None, skip=0, n_positions=24):
                 break
             x.append(raw[idx_i, idx_j: idx_j+n_positions])
             t.append(raw[idx_i, idx_j+1: idx_j+n_positions+1])
-    x = np.array(x, dtype=int)
-    t = np.array(t, dtype=int)
+    x = np.array(x, dtype=np.int64)
+    t = np.array(t, dtype=np.int64)
     with open(csv_file.rsplit('.',maxsplit=1)[0]+'.pkl', 'wb') as file:
         pickle.dump({'x':x,'t':t}, file)
 
