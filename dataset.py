@@ -56,6 +56,8 @@ class TutorDataset(torch.utils.data.dataset.Dataset):
 if __name__ == "__main__":
     X = get_tutor_dataset('train.pkl',1)
     Y = get_tutor_dataset('eval.pkl',1)
-    print(len(X))
-    print(len(Y))
+    for i, (x, t) in enumerate(X):
+        if i >= 3:
+            break
+        print(f"x: {x}\nt: {t}")
     

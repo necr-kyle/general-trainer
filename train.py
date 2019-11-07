@@ -123,7 +123,7 @@ def train(args, model, train_iter, eval_iter=None):
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs, labels=targets)
+            outputs = model(inputs, labels=inputs)
             loss = outputs[0]
             loss.backward()
             optimizer.step()
