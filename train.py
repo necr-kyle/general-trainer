@@ -45,6 +45,9 @@ model_dict = {'bert': (BertConfig, BertForMaskedLM),
               'roberta': (RobertaConfig, RobertaForMaskedLM),
               'gpt2': (GPT2Config, GPT2LMHeadModel)}
 
+def predict(args, model):
+    start = torch.zeros((1, 24))
+
 def draw_loss_curve(args, info_list):
 
     x = list(range(len(info_list[0]["loss_list"])))
@@ -63,29 +66,32 @@ def draw_loss_curve(args, info_list):
 def eval(args, model, eval_iter):
     model.eval()
     with torch.no_grad():
-        logger.info('')
-        logger.info('*' * 6 + '  Evaluation starts  ' + "*" * 6)
+        # logger.info('')
+        # logger.info('*' * 6 + '  Evaluation starts  ' + "*" * 6)
         start = time.time()
         running_loss = 0
 
         for inputs, targets in eval_iter:
             outputs = model(inputs, labels=targets)
             loss = outputs[0]
-            logger.debug(f'model outputs: {outputs}')
             running_loss += loss.item()
 
-        size = eval_iter.data_size()            
+            logger.debug(f'inputs: {inputs}')
+            logger.debug(f'targets: {targets}')
+            logger.debug(f'model outputs: {outputs}')
+            
+        size = len(eval_iter)
         end = time.time()
         logger.info('\t[Eval] avg loss: %.6f, time: %d seconds' 
-                    % (running_loss/size*args.batch_size, end-start))
-        logger.info('*' * 7 + '  Evaluation Ends  ' + "*" * 7)
-        logger.info('')
-        return running_loss/size*args.batch_size
+                    % (running_loss/size, end-start))
+        # logger.info('*' * 7 + '  Evaluation Ends  ' + "*" * 7)
+        # logger.info('')
+        return running_loss/size
 
 
 def train(args, model, train_iter, eval_iter=None):
 
-    if not args.no_cuda:
+    if args.use_cuda:
         model = model.cuda(args.device_no)
         model.train()
     # model = torch.nn.DataParallel(model, device_ids=(0,1,2))
@@ -114,7 +120,6 @@ def train(args, model, train_iter, eval_iter=None):
 
             logger.debug(f'inputs: {inputs}')
             logger.debug(f'targets: {targets}')
-            logger.debug(f'sum: {sum(inputs[:,0])}')
             batch_count += 1
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -130,26 +135,31 @@ def train(args, model, train_iter, eval_iter=None):
             running_loss += loss.item()
 
             # write loss log
-            if batch_count % args.log_interval == 0:
-                loss_list.append(loss.item())
-                logger.info('Batch:%6d, loss: %.6f  [%s]' % \
-                        (batch_count, running_loss/args.log_interval, time.strftime("%D %H:%M:%S")))
+            if batch_count % args.log_interval == 0 or \
+                        (batch_count < args.warmup_steps and batch_count % int(args.log_interval / 10) == 0):
+                if batch_count < args.warmup_steps:
+                    loss_list.append(running_loss/args.log_interval*10)
+                    logger.info('Batch:%6d, loss: %.6f  [%s]' % \
+                            (batch_count, running_loss/args.log_interval*10, time.strftime("%D %H:%M:%S")))
+                else:
+                    loss_list.append(running_loss/args.log_interval)
+                    logger.info('Batch:%6d, loss: %.6f  [%s]' % \
+                            (batch_count, running_loss/args.log_interval, time.strftime("%D %H:%M:%S")))
                 running_loss = 0
 
             # save model & curve
-            if batch_count % args.checkpoint_interval == 0 or \
-                        (batch_count < args.warmup_steps and batch_count % int(args.checkpoint_interval / 10) == 0):
+            if batch_count % args.checkpoint_interval == 0:
                 if eval_iter is not None:
                     eval_loss = eval(args, model, eval_iter)
                     eval_loss_list.append(eval_loss)
-                    if eval_loss < min(eval_loss_list) and args.save_best and not args.no_checkpoint:
-                        path = os.path.join(args.checkpoint_save_path, "model_pool", 
+                    if eval_loss <= min(eval_loss_list) and args.save_best_checkpoint:
+                        path = os.path.join(args.checkpoint_save_path, "model", 
                                             f"{args.model_type}-best")
                         if not os.path.exists(path):
                             os.makedirs(path)
                         model.save_pretrained(path)
                         logger.info('Best model saved in %s' % path)
-                if not args.no_checkpoint:
+                if args.save_normal_checkpoint:
                     path = os.path.join(args.checkpoint_save_path, "tmp", f"{args.model_type}-{batch_count}")
                     if not os.path.exists(path):
                         os.makedirs(path)
@@ -171,8 +181,8 @@ def main():
                         help="use this when reading from existing checkpoint")
 
     parser.add_argument("--device_no", default=0, type=int, required=False,
-                        help="which gpu you want the script to run on")
-    parser.add_argument("--no_cuda", action="store_true",
+                        help="which gpu you want the script to run on (effective only when --use_cuda)")
+    parser.add_argument("--use_cuda", action="store_true",
                         help="if you want to use cpu")
 
     parser.add_argument("--training_steps", default=100000, type=int, required=False,
@@ -181,24 +191,27 @@ def main():
     parser.add_argument("--batch_size", default=6, type=int, required=False)
     parser.add_argument("--learning_rate", default=8e-3, type=float, required=False)
                         
+    parser.add_argument("--do_train", action="store_true")
     parser.add_argument("--train_data_path", default=None, type=str, required=False)
     parser.add_argument("--train_data_size", default=-1, type=int, required=False)
-    parser.add_argument("--no_train", action="store_true")
+    parser.add_argument("--do_eval", action="store_true")
     parser.add_argument("--eval_data_path", default=None, type=str, required=False)
     parser.add_argument("--eval_data_size", default=-1, type=int, required=False)
-    parser.add_argument("--no_eval", action="store_true")
-
+    
     parser.add_argument("--checkpoint_save_path", default=None, type=str, required=False,
                         help="the checkpoints will be saved in ${path}/tmp/")
     parser.add_argument("--checkpoint_interval", default=50000, type=int, required=False,
                         help="after this number of batches the model will save a checkpoint")
-    parser.add_argument("--no_checkpoint", action="store_true")
+    parser.add_argument("--save_normal_checkpoint", action="store_true",
+                        help="don't save checkpoint when evalutating (still you can save_best_checkpoint)")
+    parser.add_argument("--save_best_checkpoint", action="store_true",
+                        help="Save the best model in evaluations (ignore save_normal_checkpoint)")
 
     parser.add_argument("--log_interval", default=5000, type=int, required=False,
                         help="how many batches you want for every display message")
     parser.add_argument("--logging_output", default="default.out", type=str, required=False)
     parser.add_argument("--logging_level", default='info', type=str, required=False,
-                        help="If you want to show debug information, use 'debug'.")
+                        help="If you want to show debug information, use '--logging_level=debug' (with caution).")
 
     parser.add_argument("--allow_os_error", action="store_true",
                         help="if allow os error, a new model will be automatically used if the checkpoint is not found.")
@@ -211,17 +224,14 @@ def main():
     if args.model_type not in model_dict.keys():
         logger.error("--model_type not in model_dict. Please try another.")
         return
-    if not args.no_checkpoint and args.checkpoint_save_path is None:
-        raise OSError("Need checkpoint_save_path or no_checkpoint.")
-    if not args.no_train and (args.train_data_path is None or args.train_data_path == ''):
-        raise OSError("Need train_data_path or no_train")
-    if not args.no_eval and (args.eval_data_path is None or args.eval_data_path == ''):
-        raise OSError("Need eval_data_path or no_eval")
-    if args.no_train and args.no_eval:
-        raise ValueError("No training and no evaluating make a meaningless script.")
-
-    if args.debugging:
-        args.logging_level = "debug"
+    if (args.save_normal_checkpoint or args.save_best_checkpoint) and args.checkpoint_save_path is None:
+        raise OSError("Need --checkpoint_save_path if --save_normal_checkpoint or --save_best_checkpoint.")
+    if args.do_train and (args.train_data_path is None or args.train_data_path == ''):
+        raise OSError("Need --train_data_path if --do_train")
+    if args.do_eval and (args.eval_data_path is None or args.eval_data_path == ''):
+        raise OSError("Need --eval_data_path if --do_eval")
+    if not args.do_train and not args.do_eval:
+        raise ValueError("At least one of --do_train or --do_eval is needed.")
 
     Config = model_dict[args.model_type][0]
     Model = model_dict[args.model_type][1]
@@ -238,28 +248,28 @@ def main():
         try:
             mlm = Model.from_pretrained(args.model_path, config=model_config)
         except (OSError, AssertionError) as e:
-            if not args.allow_os_error:
-                raise e
-            else:
+            if args.allow_os_error:
                 logging.info(f"Loading error: didn't find checkpoint at {args.model_path}. Create from scratch.")
                 mlm = Model(config=model_config)
+            else:
+                raise e
 
-    if not args.no_train:
+    if args.do_train:
         if args.train_data_size <= 0:
             args.train_data_size = None
         train_iter = get_tutor_dataset(args.train_data_path, args.batch_size)
-    if not args.no_eval:
+    if args.do_eval:
         if args.eval_data_size <= 0:
             args.eval_data_size = None
         eval_iter = get_tutor_dataset(args.eval_data_path, args.batch_size)
 
-    logger.info(f"Data loaded." +
-                f"{len(train_iter.dataset)} sequences in train dataset." if not args.no_train else "" +
-                f"{len(eval_iter.dataset)} sequences in eval dataset" if not args.no_eval else "" 
+    logger.info(f"Data loaded. " +
+                f"{len(train_iter.dataset)} sequences in train dataset." if args.do_train else "" +
+                f"{len(eval_iter.dataset)} sequences in eval dataset." if args.do_eval else "" 
                 )
         
-    if not args.no_train:
-        if not args.no_eval:
+    if args.do_train:
+        if args.do_eval:
             start = time.time()
             train(args, mlm, train_iter, eval_iter)
             end = time.time()
