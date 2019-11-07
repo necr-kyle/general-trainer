@@ -45,8 +45,6 @@ model_dict = {'bert': (BertConfig, BertForMaskedLM),
               'roberta': (RobertaConfig, RobertaForMaskedLM),
               'gpt2': (GPT2Config, GPT2LMHeadModel)}
 
-def predict(args, model):
-    start = torch.zeros((1, 24))
 
 def draw_loss_curve(args, info_list):
 
@@ -137,7 +135,7 @@ def train(args, model, train_iter, eval_iter=None):
             # write loss log
             if batch_count % args.log_interval == 0 or \
                         (batch_count < args.warmup_steps and batch_count % int(args.log_interval / 10) == 0):
-                if batch_count < args.warmup_steps:
+                if batch_count <= args.warmup_steps:
                     loss_list.append(running_loss/args.log_interval*10)
                     logger.info('Batch:%6d, loss: %.6f  [%s]' % \
                             (batch_count, running_loss/args.log_interval*10, time.strftime("%D %H:%M:%S")))
@@ -236,7 +234,7 @@ def main():
     Config = model_dict[args.model_type][0]
     Model = model_dict[args.model_type][1]
     
-    logging.basicConfig(filename=args.logging_output, level=info_level_dict[args.logging_level])
+    logging.basicConfig(filename=args.logging_output, level=info_level_dict[args.logging_level], filemode='w')
 
     json_args = json.dumps(vars(args), indent=4)
     logger.info(f"Experiment setting:\n{json_args}")
