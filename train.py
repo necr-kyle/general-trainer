@@ -1,5 +1,5 @@
 from optim import ScheduledOptim
-from dataset import Dataset
+from dataset import get_tutor_dataset
 
 import argparse
 import time
@@ -183,10 +183,10 @@ def main():
     parser.add_argument("--learning_rate", default=8e-3, type=float, required=False)
                         
     parser.add_argument("--train_data_path", type=str, required=True)
-    parser.add_argument("--train_data_size", default=0, type=int, required=False)
+    parser.add_argument("--train_data_size", default=-1, type=int, required=False)
     parser.add_argument("--no_train", action="store_true")
     parser.add_argument("--eval_data_path", type=str, required=True)
-    parser.add_argument("--eval_data_size", default=2000, type=int, required=False)
+    parser.add_argument("--eval_data_size", default=-1, type=int, required=False)
     parser.add_argument("--no_eval", action="store_true")
 
     parser.add_argument("--checkpoint_save_path", type=str, required=False, default=None,
@@ -243,26 +243,20 @@ def main():
     if not args.no_train:
         if args.train_data_size <= 0:
             args.train_data_size = None
-        train_dataset = Dataset(args.train_data_path, args.train_data_size)
+        train_iter = get_tutor_dataset(args.train_data_path, args.train_data_size)
     if not args.no_eval:
         if args.eval_data_size <= 0:
             args.eval_data_size = None
-        eval_dataset = Dataset(args.eval_data_path, args.eval_data_size)
+        eval_iter = get_tutor_dataset(args.eval_data_path, args.eval_data_size)
 
-    logger.info(f"Data loaded." + 
-                f"{len(train_dataset)} sequences in train dataset." if not args.no_train else "" + 
-                f"{len(eval_dataset)} sequences in eval dataset" if not args.no_eval else "" 
+    logger.info(f"Data loaded." +
+                f"{len(train_iter.dataset)} sequences in train dataset." if not args.no_train else "" +
+                f"{len(eval_iter.dataset)} sequences in eval dataset" if not args.no_eval else "" 
                 )
         
 
     if not args.no_train:
-        train_iter = torch.utils.data.DataLoader(train_dataset, 
-                                                batch_size=args.batch_size, 
-                                                shuffle=True)
         if not args.no_eval:
-            eval_iter = torch.utils.data.DataLoader(eval_dataset, 
-                                                    batch_size=args.batch_size, 
-                                                    shuffle=True)
             start = time.time()
             train(args, mlm, train_iter, eval_iter)
             end = time.time()

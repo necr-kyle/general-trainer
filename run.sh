@@ -6,10 +6,8 @@ nohup python train.py \
     --training_steps 3000 \
     --warmup_steps 200 \
     --batch_size 100 \
-    --train_data_path ./data/train.txt\
-    --train_data_size 20000 \
-    --eval_data_path ./data/eval.txt\
-    --eval_data_size 600 \
+    --train_data_path /train.pkl \
+    --eval_data_path /eval.pkl \
     --no_checkpoint \
     --log_interval 200 \
     --debugging &

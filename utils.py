@@ -13,9 +13,10 @@ def inst_to_gpt2_inst(csv_file, size=None, skip=0, n_positions=24):
             t.append(raw[idx_i, idx_j+1: idx_j+n_positions+1])
     x = np.array(x, dtype=int)
     t = np.array(t, dtype=int)
-    with open('train.pkl', 'wb') as file:
+    with open(csv_file.rsplit('.',maxsplit=1)[0]+'.pkl', 'wb') as file:
         pickle.dump({'x':x,'t':t}, file)
 
 
 if __name__ == "__main__":
     inst_to_gpt2_inst('./eval.txt')
+    inst_to_gpt2_inst('./train.txt')
