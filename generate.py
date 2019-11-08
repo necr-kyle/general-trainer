@@ -47,11 +47,10 @@ def generate_sentence(model, max_len):
     print(sentence)
     return sentence
 
-def gpt2_generate_greedy(model, tokenizer, max_len=64, sentence=None):
-    if not sentence:
-        sentence = "Peking University is the most famous university on Chinese website"
-    token_list = tokenizer.encode(sentence)
-    sentence = sentence.split()
+def test_language_generate_greedy(max_len=64):
+    config = GPT2Config.from_pretrained("./models/gpt2/config.json")
+    model = GPT2LMHeadModel.from_pretrained("./models/gpt2/pytorch_model.bin", config=config)
+    token_list = [3,5,2]
     input = torch.tensor(token_list).unsqueeze(0)
     model.eval()
     with torch.no_grad():
@@ -59,19 +58,16 @@ def gpt2_generate_greedy(model, tokenizer, max_len=64, sentence=None):
             output = model(input)[0]
             output_id = int(output.max(2)[1][0,-1])
             token_list.append(output_id)
-            output_token = tokenizer.decode(output_id)
-            sentence.append(output_token)
-            input = torch.tensor(token_list).unsqueeze(0)
-            if output_token == '.':
+            input = torch.tensor(token_list[-24:]).unsqueeze(0)
+            if output_id == 0:
                 break
-    print(' '.join(sentence))
     print(token_list)
 
-def gpt2_generate_beam_search(model, tokenzier, max_len=64, sentence=None, choice=3, keeps=3):
+def gpt2_generate_beam_search(model, tokenizer, max_len=64, sentence=None, choice=5, keeps=10):
     if not sentence:
         sentence = "Peking University is the most famous university on Chinese website"
     token_list = tokenizer.encode(sentence)
-    sentence = sentence.split()
+    sentence = [token+' ' for token in sentence.split()]
     input = torch.tensor(token_list).unsqueeze(0)
     model.eval()
     candidates = [(token_list, 1.0)]
@@ -87,7 +83,7 @@ def gpt2_generate_beam_search(model, tokenzier, max_len=64, sentence=None, choic
                 input = torch.tensor(token_list).unsqueeze(0)
                 output = model(input)[0]        # [1, seq_len, vocab_size]
                 last_output = output[0, -1, :]          # [vocab_size]
-                last_output = F.softmax(last_output, dim=1)
+                last_output = F.softmax(last_output, dim=0)
                 top_k = torch.topk(last_output, choice)   # [choice]
                 prob = last_output[top_k[1]]
                 for idx, id in enumerate(top_k[1]):
@@ -105,13 +101,15 @@ def gpt2_generate_beam_search(model, tokenzier, max_len=64, sentence=None, choic
         print(f"Score: {score}")
         print(f"Token list: {token_list}")
         sentence = list(map(lambda x: tokenizer.decode(x), token_list))
-        print(f"Sentence: {' '.join(sentence)}")
+        print(f"Sentence: {''.join(sentence)}")
 
-
-if __name__ == "__main__":
+def test_gpt():
     config = GPT2Config.from_pretrained("/data/home/kylekhuang/models/gpt2/gpt2-config.json")
     model = GPT2LMHeadModel.from_pretrained("/data/home/kylekhuang/models/gpt2/gpt2-pytorch_model.bin", config=config)
     tokenizer = GPT2Tokenizer('/data/home/kylekhuang/models/gpt2/gpt2-vocab.json', "/data/home/kylekhuang/models/gpt2/gpt2-merges.txt")
     # logging.basicConfig(filename="default.txt", level=logging.DEBUG, filemode='w')
     # gpt2_generate_greedy(model, tokenizer, sentence=sys.argv[1])
     gpt2_generate_beam_search(model, tokenizer, sentence=sys.argv[1])
+
+if __name__ == "__main__":
+    test_gpt()
