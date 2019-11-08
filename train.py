@@ -70,7 +70,7 @@ def eval(args, model, eval_iter):
         running_loss = 0
 
         for inputs, targets in eval_iter:
-            outputs = model(inputs, labels=targets)
+            outputs = model(inputs, labels=inputs)
             loss = outputs[0]
             running_loss += loss.item()
 
