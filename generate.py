@@ -103,13 +103,23 @@ def gpt2_generate_beam_search(model, tokenizer, max_len=64, sentence=None, choic
         sentence = list(map(lambda x: tokenizer.decode(x), token_list))
         print(f"Sentence: {''.join(sentence)}")
 
-def test_gpt():
-    config = GPT2Config.from_pretrained("/data/home/kylekhuang/models/gpt2/gpt2-config.json")
-    model = GPT2LMHeadModel.from_pretrained("/data/home/kylekhuang/models/gpt2/gpt2-pytorch_model.bin", config=config)
-    tokenizer = GPT2Tokenizer('/data/home/kylekhuang/models/gpt2/gpt2-vocab.json', "/data/home/kylekhuang/models/gpt2/gpt2-merges.txt")
+def main():
+    parser = argparse.ArgumentParser()
+
+    ## Required parameters
+    parser.add_argument("--config_path", default=None, type=str, required=True)
+    parser.add_argument("--model_path", default=None, type=str, required=True)
+    parser.add_argument("--vocab_path", default=None, type=str, required=True)
+    parser.add_argument("--merges_path", default=None, type=str, required=True)
+    parser.add_argument("--sentence", default=None, type=str, required=True)
+    args = parser.parse_args()
+
+    config = GPT2Config.from_pretrained(args.config_path)
+    model = GPT2LMHeadModel.from_pretrained(args.model_path, config=config)
+    tokenizer = GPT2Tokenizer(args.vocab_path, args.merges_path)
     # logging.basicConfig(filename="default.txt", level=logging.DEBUG, filemode='w')
     # gpt2_generate_greedy(model, tokenizer, sentence=sys.argv[1])
-    gpt2_generate_beam_search(model, tokenizer, sentence=sys.argv[1])
+    gpt2_generate_beam_search(model, tokenizer, sentence=args.sentence)
 
 if __name__ == "__main__":
-    test_gpt()
+    main()
