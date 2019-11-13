@@ -2,22 +2,16 @@ from optim import ScheduledOptim
 from dataset import get_tutor_dataset
 
 import argparse
-import time
 import torch
 import json
 from torch import nn
 from torch import optim
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import sys
-import pickle
-import random
 import copy
 import torch.nn.functional as F
 
 import logging
-from collections import defaultdict
 from transformers import (GPT2Tokenizer,
                         GPT2LMHeadModel,
                         GPT2Config)
