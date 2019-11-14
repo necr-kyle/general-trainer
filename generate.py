@@ -101,11 +101,11 @@ def main():
     parser = argparse.ArgumentParser()
 
     ## Required parameters
-    parser.add_argument("--config_path", default=None, type=str, required=True)
-    parser.add_argument("--model_path", default=None, type=str, required=True)
-    parser.add_argument("--vocab_path", default=None, type=str, required=True)
-    parser.add_argument("--merges_path", default=None, type=str, required=True)
-    parser.add_argument("--sentence", default=None, type=str, required=True)
+    parser.add_argument("--config_path", default="../../models/gpt2/gpt2-config.json", type=str, required=False)
+    parser.add_argument("--model_path", default="../../models/gpt2/gpt2-pytorch_model.bin", type=str, required=False)
+    parser.add_argument("--vocab_path", default="../../models/gpt2/gpt2-vocab.json", type=str, required=False)
+    parser.add_argument("--merges_path", default="../../models/gpt2/gpt2-merges.txt", type=str, required=False)
+    parser.add_argument("--sentence", default="In this article, I am excited to take you through", type=str, required=False)
     args = parser.parse_args()
 
     config = GPT2Config.from_pretrained(args.config_path)
